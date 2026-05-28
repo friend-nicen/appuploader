@@ -5,7 +5,7 @@ const columns = [
     { title: 'Identifier', dataIndex: ['attributes', 'identifier'] },
     { title: 'Platform', dataIndex: ['attributes', 'platform'] },
     { title: 'ID', dataIndex: 'id' },
-    { title: '操作', dataIndex: 'action', width: 100 }
+    { title: '操作', dataIndex: 'action', width: 100, empty: true }
 ];
 
 export default function init() {

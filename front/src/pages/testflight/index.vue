@@ -25,7 +25,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { message } from 'ant-design-vue';
+import load from "@/common/load";
 import { SelectFile, UploadIPA } from '#/go/main/App';
 
 const filePath = ref('');
@@ -36,10 +36,10 @@ const handleSelectFile = async () => {
     const path = await SelectFile();
     if (path) {
       filePath.value = path;
-      message.success('已选择文件');
+      load.success('已选择文件');
     }
   } catch (err) {
-    message.error('选择文件失败: ' + err);
+    load.error('选择文件失败: ' + err);
   }
 };
 
@@ -49,9 +49,9 @@ const handleUpload = async () => {
   uploading.value = true;
   try {
     await UploadIPA(filePath.value);
-    message.success('上传成功');
+    load.success('上传成功');
   } catch (err) {
-    message.error('上传失败: ' + err);
+    load.error('上传失败: ' + err);
   } finally {
     uploading.value = false;
   }

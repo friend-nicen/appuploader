@@ -4,7 +4,9 @@ import {backend} from '../models';
 
 export function AddApiKey(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
-export function CreateBundleId(arg1:string,arg2:string):Promise<string>;
+export function CreateBundleId(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function CreateCertificate(arg1:string,arg2:string):Promise<string>;
 
 export function CreateDevice(arg1:string,arg2:string):Promise<string>;
 
@@ -17,6 +19,10 @@ export function DeleteBundleId(arg1:string):Promise<void>;
 export function DeleteDevice(arg1:string):Promise<void>;
 
 export function DeleteProfile(arg1:string):Promise<void>;
+
+export function DownloadCertificate(arg1:string):Promise<string>;
+
+export function ExportP12(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function GetApiKeys():Promise<Array<backend.ApiKey>>;
 

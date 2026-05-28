@@ -1,5 +1,16 @@
 import { store } from '@/common';
 
+/* 证书类型选项列表 */
+const certificateTypes = [
+    { label: 'iOS Development', value: 'IOS_DEVELOPMENT' },
+    { label: 'iOS Distribution', value: 'IOS_DISTRIBUTION' },
+    { label: 'macOS App Development', value: 'MAC_APP_DEVELOPMENT' },
+    { label: 'macOS App Distribution', value: 'MAC_APP_DISTRIBUTION' },
+    { label: 'macOS Installer Distribution', value: 'MAC_INSTALLER_DISTRIBUTION' },
+    { label: 'Mac Catalyst Development', value: 'MAC_CATALYST_DEVELOPMENT' },
+    { label: 'Mac Catalyst Distribution', value: 'MAC_CATALYST_DISTRIBUTION' },
+];
+
 const form_add = [
     {
         key: 'name',
@@ -7,16 +18,17 @@ const form_add = [
         label: '名称',
         attr: {
             required: true,
-            placeholder: '请输入名称'
+            placeholder: '请输入证书名称'
         }
     },
     {
         key: 'type',
-        type: 'input',
-        label: '类型',
+        type: 'select',
+        label: '证书类型',
         attr: {
             required: true,
-            placeholder: '请输入类型 (e.g. IOS_DEVELOPMENT)'
+            placeholder: '请选择证书类型',
+            options: certificateTypes
         }
     }
 ];
@@ -24,7 +36,7 @@ const form_add = [
 export default function initForm() {
     const need_add = store({
         name: '',
-        type: ''
+        type: undefined
     });
 
     return { form_add, need_add };

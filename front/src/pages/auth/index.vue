@@ -4,6 +4,7 @@
       <a-space>
         <a-button @click="testAuth" :loading="testingAuth">测试当前认证</a-button>
         <v-button type="primary" @click="visible_add = true">添加新密钥</v-button>
+        <v-pop/>
       </a-space>
     </template>
 
@@ -19,7 +20,8 @@
             <a-button v-if="!record.is_active" type="link" size="small" @click="setActive(record.id)">
               设为当前
             </a-button>
-            <a-popconfirm title="确定要删除这个密钥吗？" ok-text="确定" cancel-text="取消" @confirm="deleteKey(record.id)">
+            <a-popconfirm title="确定要删除这个密钥吗？" ok-text="确定" cancel-text="取消"
+                          @confirm="deleteKey(record.id)">
               <a-button type="link" danger size="small">删除</a-button>
             </a-popconfirm>
           </a-space>
@@ -28,65 +30,53 @@
     </v-table>
 
     <v-form
-      v-model:visible="visible_add"
-      :dataSource="need_add"
-      :form="form_add"
-      :showBorder="false"
-      :centered="true"
-      :union="true"
-      :submit="handleAdd"
-      message="添加成功！"
-      name="key_add"
-      title="添加 API 密钥">
+        v-model:visible="visible_add"
+        :dataSource="need_add"
+        :form="form_add"
+        :showBorder="false"
+        :centered="true"
+        :union="true"
+        :init="addKey"
+        :after="() => Object.keys(need_add.data).forEach(k => need_add.data[k] = '')"
+        message="添加成功"
+        name="key_add"
+        title="添加 API 密钥">
     </v-form>
   </a-card>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { message } from 'ant-design-vue';
-import { GetApiKeys, AddApiKey, SetCurrentKey, DeleteApiKey, TestAuth } from '#/go/main/App';
+import {AddApiKey, DeleteApiKey, GetApiKeys, SetCurrentKey, TestAuth} from '#/go/main/App';
+import {ref} from 'vue';
+import load from "@/common/load";
 import initTable from './table';
 import initForm from './form';
 
-const { table, columns } = initTable();
-const { form_add, need_add } = initForm();
+const {table, columns} = initTable();
+const {form_add, need_add} = initForm();
 
 const visible_add = ref(false);
 const testingAuth = ref(false);
 
-const handleAdd = async (data) => {
-  try {
-    await AddApiKey(data.name, data.issuer_id, data.key_id, data.private_key);
-    message.success('添加成功');
-    need_add.data.name = '';
-    need_add.data.issuer_id = '';
-    need_add.data.key_id = '';
-    need_add.data.private_key = '';
-    return true;
-  } catch (err) {
-    message.error('保存失败: ' + err);
-    return false;
-  }
-};
+const addKey = (data) => AddApiKey(data.name, data.issuer_id, data.key_id, data.private_key);
 
 const setActive = async (id) => {
   try {
     await SetCurrentKey(id);
-    message.success('设置成功');
+    load.success('设置成功');
     table.loadData();
   } catch (err) {
-    message.error('设置失败: ' + err);
+    load.error('设置失败: ' + err);
   }
 };
 
 const deleteKey = async (id) => {
   try {
     await DeleteApiKey(id);
-    message.success('删除成功');
+    load.success('删除成功');
     table.loadData();
   } catch (err) {
-    message.error('删除失败: ' + err);
+    load.error('删除失败: ' + err);
   }
 };
 
@@ -95,12 +85,12 @@ const testAuth = async () => {
   try {
     const success = await TestAuth();
     if (success) {
-      message.success('认证成功！');
+      load.success('认证成功！');
     } else {
-      message.error('认证失败。');
+      load.error('认证失败。');
     }
   } catch (err) {
-    message.error('测试认证异常: ' + err);
+    load.error('测试认证异常: ' + err);
   } finally {
     testingAuth.value = false;
   }

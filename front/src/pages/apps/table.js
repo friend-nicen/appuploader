@@ -1,11 +1,12 @@
 import initTable from '@/common/init-table';
 
 const columns = [
+    { title: 'ID', dataIndex: 'id', width: 120 },
     { title: 'Name', dataIndex: ['attributes', 'name'] },
     { title: 'Bundle ID', dataIndex: ['attributes', 'bundleId'] },
     { title: 'SKU', dataIndex: ['attributes', 'sku'] },
     { title: 'Primary Locale', dataIndex: ['attributes', 'primaryLocale'] },
-    { title: '操作', dataIndex: 'action', width: 100 }
+    { title: 'Link', dataIndex: ['links', 'self'], width: 300, ellipsis: true }
 ];
 
 export default function init() {

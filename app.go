@@ -2,6 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +16,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
+	"software.sslmate.com/src/go-pkcs12"
 
 	"appstore-connect-gui/backend"
 )
@@ -205,6 +213,19 @@ func (a *App) RevokeCertificate(id string) error {
 	return client.Delete(fmt.Sprintf("/v1/certificates/%s", id))
 }
 
+// DownloadCertificate retrieves certificate content for download
+func (a *App) DownloadCertificate(id string) (string, error) {
+	client, err := a.getActiveClient()
+	if err != nil {
+		return "", err
+	}
+	res, err := client.Get(fmt.Sprintf("/v1/certificates/%s", id))
+	if err != nil {
+		return "", err
+	}
+	return string(res), nil
+}
+
 // DeleteProfile deletes a Profile
 func (a *App) DeleteProfile(id string) error {
 	client, err := a.getActiveClient()
@@ -223,9 +244,35 @@ func (a *App) DeleteDevice(id string) error {
 	return client.Delete(fmt.Sprintf("/v1/devices/%s", id))
 }
 
-// CreateBundleId creates a Bundle ID (Stub)
-func (a *App) CreateBundleId(name, identifier string) (string, error) {
-	return "", fmt.Errorf("Not implemented yet")
+// CreateBundleId creates a Bundle ID via App Store Connect API
+func (a *App) CreateBundleId(name, identifier, platform string) (string, error) {
+	client, err := a.getActiveClient()
+	if err != nil {
+		return "", err
+	}
+
+	body := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "bundleIds",
+			"attributes": map[string]interface{}{
+				"name":       name,
+				"identifier": identifier,
+				"platform":   platform,
+			},
+		},
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("JSON marshal failed: %w", err)
+	}
+
+	res, err := client.Post("/v1/bundleIds", payload)
+	if err != nil {
+		return "", err
+	}
+
+	return string(res), nil
 }
 
 // CreateDevice creates a Device (Stub)
@@ -254,4 +301,117 @@ func (a *App) SelectFile() (string, error) {
 // UploadIPA is a placeholder for uploading IPA files
 func (a *App) UploadIPA(path string) error {
 	return fmt.Errorf("Not implemented")
+}
+
+/* 生成 RSA 2048 密钥对和 PEM 格式的 CSR（Apple 要求使用 RSA 2048） */
+func generateKeyPair(commonName string) (*rsa.PrivateKey, []byte, error) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, fmt.Errorf("生成密钥对失败: %w", err)
+	}
+	template := &x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName: commonName,
+		},
+		SignatureAlgorithm: x509.SHA256WithRSA,
+	}
+	csrDER, err := x509.CreateCertificateRequest(rand.Reader, template, priv)
+	if err != nil {
+		return nil, nil, fmt.Errorf("生成 CSR 失败: %w", err)
+	}
+	csrPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrDER})
+	return priv, csrPEM, nil
+}
+
+// CreateCertificate generates a key pair + CSR, submits it to App Store Connect,
+// and returns a JSON with the signed certificate, private key, and metadata.
+func (a *App) CreateCertificate(name, certificateType string) (string, error) {
+	client, err := a.getActiveClient()
+	if err != nil {
+		return "", err
+	}
+	/* 生成密钥对和 CSR */
+	priv, csrPEM, err := generateKeyPair(name)
+	if err != nil {
+		return "", err
+	}
+	/* 构造 POST 请求体提交 CSR 到 Apple */
+	body := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "certificates",
+			"attributes": map[string]interface{}{
+				"csrContent":      string(csrPEM),
+				"certificateType": certificateType,
+			},
+		},
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("JSON marshal failed: %w", err)
+	}
+	res, err := client.Post("/v1/certificates", payload)
+	if err != nil {
+		return "", err
+	}
+	/* 解析 Apple 返回的证书内容 */
+	var certResp struct {
+		Data struct {
+			ID         string `json:"id"`
+			Attributes struct {
+				CertificateContent string `json:"certificateContent"`
+				DisplayName        string `json:"displayName"`
+			} `json:"attributes"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(res, &certResp); err != nil {
+		return "", fmt.Errorf("解析 Apple 响应失败: %w", err)
+	}
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return "", fmt.Errorf("序列化私钥失败: %w", err)
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
+	/* 构造返回结果 */
+	result := map[string]interface{}{
+		"certPem":       certResp.Data.Attributes.CertificateContent,
+		"keyPem":        string(keyPEM),
+		"name":          name,
+		"certificateId": certResp.Data.ID,
+		"displayName":   certResp.Data.Attributes.DisplayName,
+	}
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("JSON marshal failed: %w", err)
+	}
+	return string(resultJSON), nil
+}
+
+// ExportP12 combines a PEM certificate and PEM private key into a password-protected .p12 file
+// and returns the content as base64.
+func (a *App) ExportP12(certPem, keyPem, password string) (string, error) {
+	/* 解析 PEM 格式的证书 */
+	certBlock, _ := pem.Decode([]byte(certPem))
+	if certBlock == nil {
+		return "", fmt.Errorf("解析证书 PEM 失败")
+	}
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("解析证书失败: %w", err)
+	}
+	/* 解析 PEM 格式的私钥 */
+	keyBlock, _ := pem.Decode([]byte(keyPem))
+	if keyBlock == nil {
+		return "", fmt.Errorf("解析私钥 PEM 失败")
+	}
+	privKey, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("解析私钥失败: %w", err)
+	}
+	/* 将证书和私钥打包为 PKCS#12 格式 */
+	p12Data, err := pkcs12.Encode(rand.Reader, privKey, cert, nil, password)
+	if err != nil {
+		return "", fmt.Errorf("生成 .p12 失败: %w", err)
+	}
+	/* 返回 base64 编码的 .p12 内容，前端直接下载 */
+	return base64.StdEncoding.EncodeToString(p12Data), nil
 }

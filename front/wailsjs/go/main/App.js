@@ -6,8 +6,12 @@ export function AddApiKey(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['AddApiKey'](arg1, arg2, arg3, arg4);
 }
 
-export function CreateBundleId(arg1, arg2) {
-  return window['go']['main']['App']['CreateBundleId'](arg1, arg2);
+export function CreateBundleId(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateBundleId'](arg1, arg2, arg3);
+}
+
+export function CreateCertificate(arg1, arg2) {
+  return window['go']['main']['App']['CreateCertificate'](arg1, arg2);
 }
 
 export function CreateDevice(arg1, arg2) {
@@ -32,6 +36,14 @@ export function DeleteDevice(arg1) {
 
 export function DeleteProfile(arg1) {
   return window['go']['main']['App']['DeleteProfile'](arg1);
+}
+
+export function DownloadCertificate(arg1) {
+  return window['go']['main']['App']['DownloadCertificate'](arg1);
+}
+
+export function ExportP12(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExportP12'](arg1, arg2, arg3);
 }
 
 export function GetApiKeys() {

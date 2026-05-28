@@ -27,7 +27,7 @@
       </template>
 
       <template #bodyCell="{text,record, index, column}">
-        <template v-if="(text === null || text === '' || (column.dataIndex && !(column.dataIndex in record))) && !column.empty ">
+        <template v-if="(text === null || text === '' || (column.dataIndex && !hasPath(record, column.dataIndex))) && !column.empty ">
           <span>-</span>
         </template>
         <slot v-else :column="column" :index="index" :record="record" :text="text" name="bodyCell" />
@@ -42,6 +42,24 @@
 
 <script setup>
 import initialize from './v-table'
+
+/**
+ * 检查嵌套路径是否存在于对象中
+ * 支持 dataIndex 为数组的情况，如 ['attributes', 'name']
+ */
+function hasPath(obj, path) {
+  if (!Array.isArray(path)) {
+    return path in obj;
+  }
+  let cursor = obj;
+  for (const key of path) {
+    if (cursor == null || !(key in cursor)) {
+      return false;
+    }
+    cursor = cursor[key];
+  }
+  return true;
+}
 
 /**
  * 表格可选修改

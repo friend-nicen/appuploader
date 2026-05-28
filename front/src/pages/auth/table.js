@@ -5,7 +5,7 @@ const columns = [
     { title: 'Key ID', dataIndex: 'key_id', class: 'font-mono' },
     { title: 'Issuer ID', dataIndex: 'issuer_id', class: 'font-mono' },
     { title: '状态', dataIndex: 'is_active', width: 100 },
-    { title: '操作', dataIndex: 'action', width: 200, align: 'right' }
+    { title: '操作', dataIndex: 'action', width: 200, align: 'right', empty: true }
 ];
 
 export default function init() {

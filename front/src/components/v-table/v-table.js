@@ -202,15 +202,18 @@ export default function (props) {
             requestPromise = Promise.resolve(props.init(form)).then(res => {
                 let parsed = res;
                 if (typeof res === 'string') {
-                    try { parsed = JSON.parse(res); } catch (e) {}
+                    try {
+                        parsed = JSON.parse(res);
+                    } catch (e) {
+                    }
                 }
                 let dataObj = parsed.data || parsed;
                 let responseData = {
                     code: parsed.code !== undefined ? parsed.code : 1,
-                    data: Array.isArray(dataObj) ? { data: dataObj, total: dataObj.length } : dataObj,
+                    data: Array.isArray(dataObj) ? {data: dataObj, total: dataObj.length} : dataObj,
                     errMsg: parsed.errMsg || ''
                 };
-                return { data: responseData };
+                return {data: responseData};
             });
         } else {
             requestPromise = table.methods === 'post' ?
@@ -220,64 +223,66 @@ export default function (props) {
 
         return requestPromise.then((res) => {
 
-                /* 判断请求结果 */
-                if (res.data.code) {
+            console.log(res);
 
-                    /* 是否需要过滤数据 */
-                    if (!!table.filter) {
-                        dataSource.data = table.filter(res.data.data.data);
-                    } else {
-                        dataSource.data = res.data.data;
-                    }
+            /* 判断请求结果 */
+            if (res.data.code) {
 
-                    /* 是否需要展开行 */
-                    if (!!table.defaultExpandAllRows) {
-                        expandedRowKeys.value = getNode(dataSource.data.data, 'id');
-                    }
-
-                    /* 更新分页信息 */
-                    pagination.total = res.data.data.total;
-
-                    /* 实时更新 */
-                    if(table.watch.pagination){
-                        pagination.current = res.data.data.current_page;
-                        pagination.lastPage = res.data.data.last_page;
-                        pagination.pageSize = res.data.data.per_page;
-                    }
-
-                    /* 请求结束 */
-                    if (!!table.callback) {
-                        table.callback(res.data, pagination);
-                    }
-
-                    /* 可编辑的列和索引 */
-                    table.editable = dataSource.data.data.map(() => {
-                        return cloneDeep(editKey);
-                    });
-
+                /* 是否需要过滤数据 */
+                if (!!table.filter) {
+                    dataSource.data = table.filter(res.data.data.data);
                 } else {
-                    /* 弹出错误原因 */
-                    load.error(res.data.errMsg);
-
-                    /* 错误回调 */
-                    if (!!table.error) {
-                        table.error(res.data, pagination);
-                    }
-
+                    dataSource.data = res.data.data;
                 }
-            }).catch((e) => {
+
+                /* 是否需要展开行 */
+                if (!!table.defaultExpandAllRows) {
+                    expandedRowKeys.value = getNode(dataSource.data.data, 'id');
+                }
+
+                /* 更新分页信息 */
+                pagination.total = res.data.data.total;
+
+                /* 实时更新 */
+                if (table.watch.pagination) {
+                    pagination.current = res.data.data.current_page;
+                    pagination.lastPage = res.data.data.last_page;
+                    pagination.pageSize = res.data.data.per_page;
+                }
+
+                /* 请求结束 */
+                if (!!table.callback) {
+                    table.callback(res.data, pagination);
+                }
+
+                /* 可编辑的列和索引 */
+                table.editable = dataSource.data.data.map(() => {
+                    return cloneDeep(editKey);
+                });
+
+            } else {
                 /* 弹出错误原因 */
-                load.error(e.message);
-            }).finally(() => {
-                /* 关闭加载效果 */
-                loadingTable.value = false;
-                loaded.value = true;
-                table.loaded = true;
-                /* 加载触发的时间戳 */
-                table.timestamp = dayjs().unix();
-                /* 关闭加载信息 */
-                load.loaded();
-            });
+                load.error(res.data.errMsg);
+
+                /* 错误回调 */
+                if (!!table.error) {
+                    table.error(res.data, pagination);
+                }
+
+            }
+        }).catch((e) => {
+            /* 弹出错误原因 */
+            load.error(e.message);
+        }).finally(() => {
+            /* 关闭加载效果 */
+            loadingTable.value = false;
+            loaded.value = true;
+            table.loaded = true;
+            /* 加载触发的时间戳 */
+            table.timestamp = dayjs().unix();
+            /* 关闭加载信息 */
+            load.loaded();
+        });
     }
 
 
