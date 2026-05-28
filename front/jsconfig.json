@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "#/*": ["./wailsjs/*"]
+    }
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

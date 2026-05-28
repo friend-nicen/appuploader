@@ -1,0 +1,39 @@
+/* modal重置 */
+.antd-reset-modal {
+  .ant-modal-content {
+    padding: 0;
+
+    .ant-modal-header {
+      padding: 21px 24px;
+      margin-bottom: 0;
+    }
+
+    .ant-modal-close {
+      top: 22.5px;
+    }
+
+    .ant-modal-body {
+      padding: 0;
+
+      .ant-tree .ant-tree-treenode {
+        padding: 0 0 6px 0;
+        gap: 6px;
+      }
+
+      .ant-divider {
+        margin: 5px 0 24px 0;
+      }
+
+      .horizontal {
+        .ant-form-item {
+          margin-bottom: 24px;
+        }
+      }
+    }
+
+    .ant-modal-footer {
+      padding: 10px 24px;
+      margin-top: 0;
+    }
+  }
+}

@@ -1,0 +1,228 @@
+/* 字体颜色 */
+$text-color-1: #181a1a; /* 深色字体 */
+$text-color-2: #262626; /*正文字体*/
+$text-color-3: #626366; /*字体辅助色*/
+$text-color-4: #889191; /*次级字体*/
+$text-color-5: rgba(0, 0, 0, 0.65);
+
+/* 字体大小 */
+$font-size: 16px;
+$font-size-2: 15px;
+$font-size-3: 14px;
+$font-size-4: 13px;
+$font-size-5: 12px;
+$font-size-6: 10px;
+
+/*边框*/
+$border: #e6e6e6;
+$border-2: #889191;
+$border-3: #d9d9d9;
+
+/* 阴影 */
+$shadow: 0 1px 3px rgba(#001529, 0.12); /*基础阴影*/
+$shadow-2: rgba(19, 9, 40, 0.16) 0px 0px 36px 12px; /*基础阴影*/
+
+
+
+/* antd scss变量 */
+$primary-color: var(--primary-color); // 全局主色
+$primary-hover: #f7f8fa;
+$heading-color: rgba(0, 0, 0, 0.85); // 标题色
+$table-td: #f2f3f5;
+$table-hover: #f7f8fa;
+
+
+/* 系统结构 */
+$admin-header-height: 60px;
+$admin-header-color: var(--v-admin-header-color); /*背景颜色*/
+$admin-header-bgcolor: var(--v-admin-header-bgcolor); /*背景颜色*/
+$admin-header-border: 1px solid var(--v-admin-header-border);
+$admin-header-menu-margin: 5px; /* 菜单边距*/
+
+$admin-header-menu-color: var(--v-admin-header-menu-color); /*背景颜色*/
+$admin-header-menu-active-color: var(--v-admin-header-menu-active-color); /*背景颜色*/
+
+$admin-menu-size: 14px; /* 菜单字体大小 */
+
+$sidebar-color: var(--v-sidebar-color); //菜单字体颜色
+$sidebar-hover-color: var(--v-sidebar-hover-color); //菜单被激活的字体颜色
+$sidebar-bg-color: var(--v-sidebar-bg-color); /*侧边栏背景*/
+$sidebar-hover-bg-color: var(--v-sidebar-hover-bg-color);
+$sidebar-menu-border-radius: var(--v-sidebar-menu-border-radius);
+
+
+$admin-sider-shadow: var(--v-admin-sider-shadow); /*侧边栏阴影*/
+$admin-layout-content: var(--v-admin-layout-content);
+
+
+$card-bg-color: var(--v-card-bg-color); /*卡片背景*/
+
+
+/*内部元素上下居中*/
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+}
+
+/*卡片背景*/
+@mixin white {
+  background-color: white;
+  border-radius: 4px;
+}
+
+
+/*占满全屏不超出*/
+@mixin full {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 水平分割线样式 */
+@mixin diliver {
+  .horizontal {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    width: 100%;
+    color: $text-color-2;
+    font-size: $font-size-5;
+
+    &:before {
+      width: 100%;
+      content: " ";
+      margin-right: 2px;
+      border-top: 1px solid $border;
+    }
+
+    &:after {
+      width: 100%;
+      content: " ";
+      margin-left: 2px;
+      border-top: 1px solid $border;
+      position: relative;
+      top: 50%;
+    }
+  }
+}
+
+/* 文字不换行 */
+@mixin nowrap {
+  word-wrap: break-word;
+  word-spacing: normal;
+  word-break: break-all;
+}
+
+/* 特定的div样式 */
+@mixin card {
+  .card {
+    min-height: calc(100vh - 82px);
+    background-color: white;
+
+    .operate {
+      @include flex-center;
+      justify-content: space-between;
+      padding: 5px 0 20px 0;
+    }
+
+    :deep(.ant-image) {
+      .image {
+        max-height: 60px;
+      }
+    }
+
+    :deep(.ant-card-body) {
+      padding: 16px 24px;
+      min-height: calc(100vh - 154px);
+    }
+  }
+}
+
+
+@mixin mobile {
+
+
+  .mobile {
+
+    height: fit-content;
+
+    :deep(.ant-card-body) {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
+
+
+@mixin tree {
+  :deep(.ant-tree) {
+
+    height: 100% !important;
+
+    .ant-tree-list {
+      height: 100% !important;
+    }
+
+    .ant-tree-list-scrollbar {
+      width: 6px !important;
+      right: -16px !important;
+
+      .ant-tree-list-scrollbar-thumb {
+        background-color: #e1e1e1 !important;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.5) !important;
+        }
+      }
+    }
+
+    /* 虚拟滚动容器样式 */
+    .ant-tree-list-holder {
+      height: 100% !important;
+      @include scroll-bar();
+
+      & > div {
+        overflow: unset !important;
+        padding-bottom: 15px !important;
+      }
+
+      .ant-select-tree-list-holder-inner {
+        width: fit-content !important;
+      }
+    }
+
+
+    .ant-tree-treenode {
+      white-space: nowrap;
+      padding: 1px 0;
+
+      .ant-tree-node-content-wrapper {
+        padding: 2px 4px;
+      }
+
+      .operate {
+        display: inline-flex;
+        margin-left: 8px;
+        cursor: pointer;
+        color: $text-color-1;
+
+        span {
+          &:active {
+            color: $text-color-3;
+          }
+        }
+      }
+
+    }
+
+    .ant-tag {
+      line-height: normal;
+    }
+
+    .ant-tag-blue {
+      color: $primary-color;
+      border-color: $primary-color;
+      background-color: transparent;
+    }
+
+  }
+}

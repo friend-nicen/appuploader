@@ -1,0 +1,157 @@
+/* 重置组件 */
+* {
+  box-sizing: border-box;
+}
+
+/* 卡片组件的样式 */
+.ant-card {
+
+  .ant-card-head {
+
+    padding: 4.5px 1.25rem !important;
+    height: 72px;
+    min-height: 72px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+
+    .ant-card-head-wrapper {
+      width: 100%;
+    }
+
+    .ant-card-head-title {
+
+      @include flex-center;
+      justify-content: flex-start;
+      position: relative;
+      font-size: 16.5px !important;
+      font-weight: normal !important;
+      padding: 0 0 0 20px;
+      white-space: nowrap;
+
+      &:before, &:after {
+        position: absolute;
+        top: 20%;
+        left: 5px;
+        transform: rotate(15deg);
+        display: block;
+        content: " ";
+        font-weight: 510;
+        border-radius: 5px;
+        width: 3px;
+        height: 60%;
+        margin-right: 0.3rem;
+        transition: all .4s ease-in-out;
+        background-color: $primary-color;
+        flex-grow: 0;
+        order: 0;
+      }
+
+      &:after {
+        left: 12px;
+        top: 25%;
+        height: 50%;
+        opacity: 0.6;
+      }
+    }
+  }
+
+  /*&:hover {
+    .ant-card-head {
+      .ant-card-head-title {
+        &:before, &:after {
+          transform: rotate(-165deg);
+        }
+      }
+    }
+  }*/
+
+  .ant-card-body {
+    padding: 18px 20px;
+  }
+}
+
+
+/* 布局组件的一些调整 */
+.ant-layout {
+  min-height: unset;
+}
+
+
+/* 表格组件鼠标悬浮时的样式 */
+.ant-table-tbody > tr.ant-table-row:hover > td, .ant-table-tbody > tr > td.ant-table-cell-row-hover {
+  background: $primary-hover;
+}
+
+/* 调整表格虚拟滚动条的大小 */
+.ant-table-sticky-scroll-bar {
+  height: 0.41rem !important;
+}
+
+/* 调整树形选择器的样式 */
+.ant-tree-select-dropdown {
+
+  padding-bottom: 0;
+
+  .ant-select-tree {
+
+    /* 虚拟滚动条样式 */
+    .ant-select-tree-list-scrollbar {
+      .ant-select-tree-list-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.25) !important;
+        width: 0.418rem !important;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.5) !important;
+        }
+      }
+    }
+
+    /* 虚拟滚动容器样式 */
+    .ant-select-tree-list-holder {
+
+      @include scroll-bar($color: rgba(0, 0, 0, 0.25));
+
+      & > div {
+        overflow: unset !important;
+      }
+
+      .ant-select-tree-list-holder-inner {
+        width: fit-content !important;
+      }
+
+      .ant-select-tree-title {
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+/* 下拉菜单 */
+.ant-dropdown, .ant-popover {
+  & .ant-dropdown-menu, & .ant-popover-inner {
+    border-radius: 8px;
+    background-clip: padding-box;
+    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.ant-dropdown-menu-submenu-popup {
+  box-shadow: none !important;
+}
+
+
+/* 移动端兼容 */
+@media (max-width: 767px) {
+  .ant-modal {
+    max-width: 85vw !important;
+  }
+
+  .card {
+    .ant-card-head-title, .ant-card-extra {
+      padding: 15px 0;
+      font-size: 15px !important;
+    }
+  }
+}
+
