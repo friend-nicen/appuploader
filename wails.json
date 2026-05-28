@@ -1,6 +1,6 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "appstore-connect-gui",
+  "name": "苹果开发者助手",
   "outputfilename": "appstore-connect-gui",
   "frontend:dir": "front",
   "frontend:install": "npm install",

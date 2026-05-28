@@ -1,26 +1,25 @@
 <template>
   <div style="display: flex; align-items: center; gap: 8px;">
     <a-select
-      v-model:value="selectedKeyId"
-      :options="keyOptions"
-      style="width: 200px"
-      placeholder="选择 API Key"
-      @change="handleKeyChange"
-      :loading="loading"
+        v-model:value="selectedKeyId"
+        :options="keyOptions"
+        style="width: 200px"
+        placeholder="选择 API Key"
+        @change="handleKeyChange"
     />
-    <a-button type="text" size="small" @click="fetchKeys" :loading="loading" title="刷新">
-      <v-icon name="sync" />
+    <a-button type="text" size="small" @click="fetchKeys" title="刷新">
+      <sync-outlined style="font-size: 14px;"/>
     </a-button>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { GetApiKeys, SetCurrentKey } from '#/go/main/App';
+import {computed, onMounted, ref} from 'vue';
+import {SyncOutlined} from "@ant-design/icons-vue";
+import {GetApiKeys, SetCurrentKey} from '#/go/main/App';
 
 const keys = ref([]);
 const selectedKeyId = ref(null);
-const loading = ref(false);
 
 const keyOptions = computed(() => {
   return keys.value.map(k => ({
@@ -30,11 +29,10 @@ const keyOptions = computed(() => {
 });
 
 const fetchKeys = async () => {
-  loading.value = true;
   try {
     const data = await GetApiKeys();
     keys.value = data || [];
-    
+
     /* 找出当前处于激活状态的密钥 */
     const activeKey = keys.value.find(k => k.is_active);
     if (activeKey) {
@@ -44,8 +42,6 @@ const fetchKeys = async () => {
     }
   } catch (err) {
     console.error('获取密钥列表失败:', err);
-  } finally {
-    loading.value = false;
   }
 };
 

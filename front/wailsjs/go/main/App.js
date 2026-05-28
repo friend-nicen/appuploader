@@ -10,16 +10,16 @@ export function CreateBundleId(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateBundleId'](arg1, arg2, arg3);
 }
 
-export function CreateCertificate(arg1, arg2) {
-  return window['go']['main']['App']['CreateCertificate'](arg1, arg2);
+export function CreateCertificate(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateCertificate'](arg1, arg2, arg3);
 }
 
 export function CreateDevice(arg1, arg2) {
   return window['go']['main']['App']['CreateDevice'](arg1, arg2);
 }
 
-export function CreateProfile(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['CreateProfile'](arg1, arg2, arg3, arg4);
+export function CreateProfile(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['CreateProfile'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function DeleteApiKey(arg1) {
@@ -42,12 +42,32 @@ export function DownloadCertificate(arg1) {
   return window['go']['main']['App']['DownloadCertificate'](arg1);
 }
 
+export function DownloadProfile(arg1) {
+  return window['go']['main']['App']['DownloadProfile'](arg1);
+}
+
+export function ExportCSR(arg1) {
+  return window['go']['main']['App']['ExportCSR'](arg1);
+}
+
+export function ExportLocalData() {
+  return window['go']['main']['App']['ExportLocalData']();
+}
+
+export function ExportLocalP12(arg1) {
+  return window['go']['main']['App']['ExportLocalP12'](arg1);
+}
+
 export function ExportP12(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExportP12'](arg1, arg2, arg3);
 }
 
 export function GetApiKeys() {
   return window['go']['main']['App']['GetApiKeys']();
+}
+
+export function ImportLocalData(arg1) {
+  return window['go']['main']['App']['ImportLocalData'](arg1);
 }
 
 export function ListApps() {
@@ -60,6 +80,10 @@ export function ListBundleIds() {
 
 export function ListCertificates() {
   return window['go']['main']['App']['ListCertificates']();
+}
+
+export function ListCertificatesWithLocal() {
+  return window['go']['main']['App']['ListCertificatesWithLocal']();
 }
 
 export function ListDevices() {

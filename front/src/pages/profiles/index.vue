@@ -2,7 +2,7 @@
   <a-card :bordered="false" class="card" :title="$route.meta.name">
     <template #extra>
       <a-space>
-        <v-button type="primary" @click="visible_add = true">添加 Profile</v-button>
+        <v-button type="primary" @click="handleOpenAdd">添加 Profile</v-button>
         <v-pop/>
       </a-space>
     </template>
@@ -20,10 +20,9 @@
           }}
         </template>
         <template v-else-if="column.dataIndex === 'action'">
-          <a-popconfirm title="确定要删除这个 Profile 吗？" ok-text="确定" cancel-text="取消"
-                        @confirm="handleDelete(record.id)">
-            <a-button type="link" danger>删除</a-button>
-          </a-popconfirm>
+          <Action :record="record"
+                  @download="handleDownload"
+                  @delete="handleDelete" />
         </template>
       </template>
     </v-table>
@@ -35,9 +34,8 @@
         :showBorder="false"
         :centered="true"
         :union="true"
-        :init="addProfile"
-        :after="() => Object.keys(need_add.data).forEach(k => need_add.data[k] = '')"
-        message="添加成功"
+        :submit="handleCreate"
+        :hasTable="false"
         name="profile_add"
         title="添加 Profile">
     </v-form>
@@ -47,27 +45,141 @@
 <script setup>
 import {ref} from 'vue';
 import load from "@/common/load";
-import {CreateProfile, DeleteProfile, ListProfiles} from '#/go/main/App';
+import {
+  CreateProfile,
+  DeleteProfile,
+  DownloadProfile,
+  ListBundleIds,
+  ListCertificatesWithLocal,
+  ListDevices,
+  ListProfiles
+} from '#/go/main/App';
 import initTable from './table';
-import initForm from './form';
+import initForm, {BUNDLE_ID_INDEX, CERT_INDEX, DEVICE_INDEX} from './form';
+import Action from './action.vue';
 
 const {table, columns} = initTable();
 const {form_add, need_add} = initForm();
 
 const visible_add = ref(false);
 
-const addProfile = (data) => CreateProfile(data.name, data.profileType, data.bundleId, data.certId);
-
-const handleDelete = async (id) => {
+/* 下载 Blob 文件辅助函数 */
+const downloadBlob = (content, filename, mimeType) => {
   try {
-    await DeleteProfile(id);
+    const binary = atob(content);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    load.error('下载失败: ' + e);
+  }
+};
+
+/* 加载表单选项数据 */
+const loadFormOptions = async () => {
+  try {
+    const [bundlesRes, certsRes, devicesRes] = await Promise.all([
+      ListBundleIds(),
+      ListCertificatesWithLocal(),
+      ListDevices()
+    ]);
+
+    const bundles = JSON.parse(bundlesRes);
+    form_add[BUNDLE_ID_INDEX].attr.options = (bundles.data || []).map(b => ({
+      label: (b.attributes?.name || '') + ' (' + (b.attributes?.identifier || '') + ')',
+      value: b.id
+    }));
+
+    const certs = JSON.parse(certsRes);
+    form_add[CERT_INDEX].attr.options = (certs.data || []).map(c => ({
+      label: (c.attributes?.name || '') + ' (' + (c.attributes?.certificateType || '') + ')',
+      value: c.id
+    }));
+
+    const devices = JSON.parse(devicesRes);
+    form_add[DEVICE_INDEX].attr.options = (devices.data || []).map(d => ({
+      label: (d.attributes?.name || '') + ' (' + (d.attributes?.udid || '') + ')',
+      value: d.id
+    }));
+  } catch (e) {
+    /* 选项加载失败不影响页面使用 */
+    console.warn('加载表单选项失败:', e);
+  }
+};
+
+/* 打开添加弹窗时刷新选项 */
+const handleOpenAdd = () => {
+  visible_add.value = true;
+  loadFormOptions();
+};
+
+/* 提交创建描述文件 */
+const handleCreate = async (data) => {
+  try {
+    /* 转换证书 ID 数组为 Apple API 格式 */
+    const certData = (data.certIds || []).map(id => ({
+      id: id,
+      type: 'certificates'
+    }));
+    /* 转换设备 ID 数组为 Apple API 格式 */
+    const deviceData = (data.deviceIds || []).map(id => ({
+      id: id,
+      type: 'devices'
+    }));
+    await CreateProfile(
+        data.name,
+        data.profileType,
+        data.bundleId,
+        JSON.stringify(certData),
+        deviceData.length > 0 ? JSON.stringify(deviceData) : ''
+    );
+    load.success('描述文件创建成功');
+    table.loadData();
+    return true;
+  } catch (err) {
+    load.error('创建失败: ' + err);
+    return false;
+  }
+};
+
+/* 下载描述文件 */
+const handleDownload = async (record) => {
+  try {
+    const res = await DownloadProfile(record.id);
+    const parsed = JSON.parse(res);
+    const content = parsed.data?.attributes?.profileContent;
+    if (!content) {
+      load.error('未找到描述文件内容');
+      return;
+    }
+    const name = record.attributes?.name || 'profile';
+    downloadBlob(content, name + '_' + record.id + '.mobileprovision', 'application/x-apple-aspen-config');
+    load.success('描述文件下载成功');
+  } catch (err) {
+    load.error('下载失败: ' + err);
+  }
+};
+
+/* 删除描述文件 */
+const handleDelete = async (record) => {
+  try {
+    await DeleteProfile(record.id);
     load.success('删除成功');
     table.loadData();
   } catch (err) {
     load.error('删除失败: ' + err);
   }
 };
-
 </script>
 
 <style scoped lang="scss">

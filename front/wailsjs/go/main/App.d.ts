@@ -6,11 +6,11 @@ export function AddApiKey(arg1:string,arg2:string,arg3:string,arg4:string):Promi
 
 export function CreateBundleId(arg1:string,arg2:string,arg3:string):Promise<string>;
 
-export function CreateCertificate(arg1:string,arg2:string):Promise<string>;
+export function CreateCertificate(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function CreateDevice(arg1:string,arg2:string):Promise<string>;
 
-export function CreateProfile(arg1:string,arg2:string,arg3:string,arg4:string):Promise<string>;
+export function CreateProfile(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
 export function DeleteApiKey(arg1:number):Promise<void>;
 
@@ -22,15 +22,27 @@ export function DeleteProfile(arg1:string):Promise<void>;
 
 export function DownloadCertificate(arg1:string):Promise<string>;
 
+export function DownloadProfile(arg1:string):Promise<string>;
+
+export function ExportCSR(arg1:string):Promise<string>;
+
+export function ExportLocalData():Promise<string>;
+
+export function ExportLocalP12(arg1:string):Promise<string>;
+
 export function ExportP12(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function GetApiKeys():Promise<Array<backend.ApiKey>>;
+
+export function ImportLocalData(arg1:string):Promise<void>;
 
 export function ListApps():Promise<string>;
 
 export function ListBundleIds():Promise<string>;
 
 export function ListCertificates():Promise<string>;
+
+export function ListCertificatesWithLocal():Promise<string>;
 
 export function ListDevices():Promise<string>;
 

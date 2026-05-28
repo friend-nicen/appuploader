@@ -7,7 +7,7 @@
       </a-space>
     </template>
 
-    <v-table :init="ListCertificates" :rowSelection="false">
+    <v-table :init="ListCertificatesWithLocal" :rowSelection="false">
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex && column.dataIndex[1] === 'certificateType'">
           <a-tag color="purple">
@@ -20,13 +20,10 @@
           }}
         </template>
         <template v-else-if="column.dataIndex === 'action'">
-          <a-space>
-            <a-button type="link" size="small" @click="handleDownload(record)">下载 .cer</a-button>
-            <a-popconfirm title="确定要撤销这个 Certificate 吗？" ok-text="确定" cancel-text="取消"
-                          @confirm="handleDelete(record.id)">
-              <a-button type="link" danger size="small">撤销</a-button>
-            </a-popconfirm>
-          </a-space>
+          <Action :record="record"
+                  @exportCSR="handleExportCSR"
+                  @exportP12="handleExportP12"
+                  @delete="handleDelete" />
         </template>
       </template>
     </v-table>
@@ -43,56 +40,69 @@
         name="cert_add"
         title="创建 Certificate">
     </v-form>
-
-    <!-- 创建成功后的下载弹窗 -->
-    <a-modal
-        v-model:open="visible_download"
-        title="证书创建成功"
-        :footer="null"
-        destroy-on-close>
-      <p>名称: <strong>{{ createdCert?.name }}</strong></p>
-      <p>证书 ID: <code>{{ createdCert?.certificateId }}</code></p>
-      <p>显示名称: <strong>{{ createdCert?.displayName }}</strong></p>
-      <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
-        <a-button type="primary" @click="downloadCer">下载 .cer</a-button>
-        <a-button @click="promptP12Password">下载 .p12 (含私钥)</a-button>
-      </div>
-    </a-modal>
   </a-card>
 </template>
 
 <script setup>
 import {ref} from 'vue';
 import load from "@/common/load";
-import {CreateCertificate, DownloadCertificate, ExportP12, ListCertificates, RevokeCertificate} from '#/go/main/App';
+import {
+  CreateCertificate,
+  ExportCSR,
+  ExportLocalP12,
+  ListCertificatesWithLocal,
+  RevokeCertificate
+} from '#/go/main/App';
 import initTable from './table';
 import initForm from './form';
+import Action from './action.vue';
 
 const {table, columns} = initTable();
 const {form_add, need_add} = initForm();
 
 const visible_add = ref(false);
-const visible_download = ref(false);
-const createdCert = ref(null);
+
+/* 下载 Blob 文件辅助函数 */
+const downloadBlob = (content, filename, mimeType) => {
+  try {
+    const binary = atob(content);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    load.error('下载失败: ' + e);
+  }
+};
+
+/* 下载文本文件辅助函数 */
+const downloadText = (content, filename) => {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 /* 提交创建证书 */
 const handleCreate = async (data) => {
   try {
-    const res = await CreateCertificate(data.name, data.type);
-    const parsed = JSON.parse(res);
-    /* 保存创建结果，用于后续下载 */
-    createdCert.value = {
-      certPem: parsed.certPem,
-      keyPem: parsed.keyPem,
-      name: parsed.name,
-      certificateId: parsed.certificateId,
-      displayName: parsed.displayName,
-    };
+    await CreateCertificate(data.name, data.type, data.password);
     load.success('证书创建成功');
-    /* 关闭添加弹窗后弹出下载弹窗 */
-    setTimeout(() => {
-      visible_download.value = true;
-    }, 300);
+    table.loadData();
     return true;
   } catch (err) {
     load.error('创建失败: ' + err);
@@ -100,113 +110,41 @@ const handleCreate = async (data) => {
   }
 };
 
-/* 下载 .cer 文件（公钥证书） */
-const downloadCer = () => {
-  const cert = createdCert.value;
-  if (!cert || !cert.certPem) {
-    load.error('证书数据丢失');
-    return;
-  }
-  /* certPem 是 base64 编码的 DER 证书，需要解码 */
+/* 导出 CSR */
+const handleExportCSR = async (record) => {
   try {
-    const binary = atob(cert.certPem);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: 'application/x-x509-ca-cert' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = (cert.name || 'certificate') + '_' + (cert.certificateId || '') + '.cer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    load.error('下载 .cer 失败: ' + e);
-  }
-};
-
-/* 提示用户输入 .p12 密码 */
-const promptP12Password = () => {
-  const password = prompt('请设置 .p12 文件的导出密码（至少 6 位）:', '');
-  if (!password || password.length < 6) {
-    load.warning('密码至少 6 位');
-    return;
-  }
-  downloadP12(password);
-};
-
-/* 下载 .p12 文件（证书 + 私钥，密码保护） */
-const downloadP12 = async (password) => {
-  const cert = createdCert.value;
-  if (!cert || !cert.certPem || !cert.keyPem) {
-    load.error('证书或私钥数据丢失');
-    return;
-  }
-  try {
-    const res = await ExportP12(cert.certPem, cert.keyPem, password);
-    const binary = atob(res);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: 'application/x-pkcs12' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = (cert.name || 'certificate') + '_' + (cert.certificateId || '') + '.p12';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    load.success('.p12 下载完成');
+    const csr = await ExportCSR(record.id);
+    const name = record.attributes?.name || 'certificate';
+    downloadText(csr, name + '_' + record.id + '.csr');
+    load.success('CSR 导出成功');
   } catch (err) {
-    load.error('生成 .p12 失败: ' + err);
+    load.error('CSR 导出失败: ' + err);
   }
 };
 
-/* 从列表下载已有证书的 .cer */
-const handleDownload = async (record) => {
+/* 导出 .p12 */
+const handleExportP12 = async (record) => {
   try {
-    const res = await DownloadCertificate(record.id);
-    const parsed = JSON.parse(res);
-    const content = parsed.data?.attributes?.certificateContent;
-    if (!content) {
-      load.error('未找到证书内容');
-      return;
-    }
-    const binary = atob(content);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: 'application/x-x509-ca-cert' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const res = await ExportLocalP12(record.id);
+    const name = record.attributes?.name || 'certificate';
     const type = record.attributes?.certificateType || 'CERTIFICATE';
-    a.download = (record.attributes?.name || 'certificate') + '_' + type + '.cer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(res, name + '_' + type + '.p12', 'application/x-pkcs12');
+    load.success('.p12 导出成功');
   } catch (err) {
-    load.error('下载失败: ' + err);
+    load.error('.p12 导出失败: ' + err);
   }
 };
 
-const handleDelete = async (id) => {
+/* 删除证书 */
+const handleDelete = async (record) => {
   try {
-    await RevokeCertificate(id);
-    load.success('撤销成功');
+    await RevokeCertificate(record.id);
+    load.success('删除成功');
     table.loadData();
   } catch (err) {
-    load.error('撤销失败: ' + err);
+    load.error('删除失败: ' + err);
   }
 };
-
 </script>
 
 <style scoped lang="scss">
