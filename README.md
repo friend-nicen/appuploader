@@ -20,6 +20,48 @@
 - **前端 (Web)**: Vue 3 (Composition API), Vue Router, TailwindCSS 3
 - **数据库**: SQLite (`github.com/glebarez/sqlite`)
 
+## API 密钥申请指南
+
+使用本工具前，需要先在 Apple App Store Connect 中创建 API 密钥。
+
+### 1. 前置条件
+
+- 拥有有效的 **Apple Developer 账号**（$99/年）
+- 登录 [App Store Connect](https://appstoreconnect.apple.com/)
+
+### 2. 创建 API 密钥
+
+1. 打开 App Store Connect → 右上角 **"我的账户"** → **"API 密钥"**
+2. 点击 **"生成 API 密钥"**
+3. 勾选 **"开发人员"** 权限（`Developer Role`），这是管理证书、描述文件等所需的最低权限
+4. **立即下载 `.p8` 私钥文件**（页面关闭后将无法再次下载，只能重新生成）
+
+### 3. 获取三个关键信息
+
+| 信息 | 位置 | 说明 |
+|------|------|------|
+| **Issuer ID** (发行者 ID) | API 密钥页面顶部 `发行者 ID` 字段 | 同一账户下所有密钥共享，格式为 `xxxx-xxxx-xxxx-xxxx-xxxx` |
+| **Key ID** (密钥 ID) | 密钥列表中的 `密钥 ID` 列 | 每个密钥唯一，格式为 `XXXXXXXXXX` |
+| **Private Key** (私钥) | 下载的 `.p8` 文件内容 | 以 `-----BEGIN PRIVATE KEY-----` 开头，`-----END PRIVATE KEY-----` 结尾 |
+
+### 4. 权限说明
+
+API 密钥支持以下角色，本工具需要 **至少 `开发人员` 角色**：
+
+| 角色 | 可用功能 |
+|------|---------|
+| 开发人员 | 查看和管理证书、Bundle ID、设备、描述文件 |
+| 管理员 | 上述全部 + 管理 App、用户、财务等 |
+| 财务 | 仅查看财务报告 |
+
+### 5. 安全注意事项
+
+- **私钥文件（.p8）仅下载一次**，请妥善保管
+- 建议为不同环境创建不同的 API 密钥（如开发 / 生产）
+- 可在 App Store Connect 中随时 **撤销** 泄露的密钥
+- 本工具将私钥存储在本地 SQLite 数据库中，不会上传到任何远程服务器
+- 导出数据时导出的 JSON 文件包含完整私钥，**请勿将导出的 JSON 暴露给他人**
+
 ## 开发指南
 
 本项目代码包含详尽的中英文注释，方便进行二次开发和功能扩展。
