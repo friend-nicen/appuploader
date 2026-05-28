@@ -197,10 +197,28 @@ export default function (props) {
          开始请求
          合并请求条件
          */
-        return (table.methods === 'post' ?
-            axios.post(props.init, form) :
-            axios.get(`${props.init}?` + qs.stringify(form),))
-            .then((res) => {
+        let requestPromise;
+        if (typeof props.init === 'function') {
+            requestPromise = Promise.resolve(props.init(form)).then(res => {
+                let parsed = res;
+                if (typeof res === 'string') {
+                    try { parsed = JSON.parse(res); } catch (e) {}
+                }
+                let dataObj = parsed.data || parsed;
+                let responseData = {
+                    code: parsed.code !== undefined ? parsed.code : 1,
+                    data: Array.isArray(dataObj) ? { data: dataObj, total: dataObj.length } : dataObj,
+                    errMsg: parsed.errMsg || ''
+                };
+                return { data: responseData };
+            });
+        } else {
+            requestPromise = table.methods === 'post' ?
+                axios.post(props.init, form) :
+                axios.get(`${props.init}?` + qs.stringify(form));
+        }
+
+        return requestPromise.then((res) => {
 
                 /* 判断请求结果 */
                 if (res.data.code) {

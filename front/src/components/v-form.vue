@@ -272,7 +272,28 @@ const modify = async () => {
         }
 
         /* 开始请求 */
-        axios.request(config)
+        let requestPromise;
+        if (typeof props.init === 'function') {
+            requestPromise = Promise.resolve(props.init(config.data || switchForm(data, props.format))).then(res => {
+                let parsed = res;
+                if (typeof res === 'string') {
+                    try { parsed = JSON.parse(res); } catch (e) {}
+                }
+                return {
+                    data: {
+                        code: parsed && parsed.code !== undefined ? parsed.code : 1,
+                        errMsg: parsed && parsed.errMsg ? parsed.errMsg : '',
+                        data: parsed && parsed.data ? parsed.data : parsed
+                    }
+                };
+            }).catch(e => {
+                return { data: { code: 0, errMsg: e.message || String(e) } };
+            });
+        } else {
+            requestPromise = axios.request(config);
+        }
+
+        requestPromise
             .then((res) => {
               /**
                * 判断请求结果

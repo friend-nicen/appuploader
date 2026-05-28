@@ -7,7 +7,7 @@
       </a-space>
     </template>
 
-    <v-table :dataSource="keys" :rowSelection="false">
+    <v-table :init="GetApiKeys" :rowSelection="false">
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'is_active'">
           <a-tag :color="record.is_active ? 'green' : 'default'">
@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { message } from 'ant-design-vue';
 import { GetApiKeys, AddApiKey, SetCurrentKey, DeleteApiKey, TestAuth } from '#/go/main/App';
 import initTable from './table';
@@ -52,25 +52,13 @@ import initForm from './form';
 const { table, columns } = initTable();
 const { form_add, need_add } = initForm();
 
-const keys = ref([]);
 const visible_add = ref(false);
 const testingAuth = ref(false);
-
-const fetchKeys = async () => {
-  try {
-    const data = await GetApiKeys();
-    keys.value = data || [];
-  } catch (err) {
-    message.error('获取密钥失败: ' + err);
-  }
-};
 
 const handleAdd = async (data) => {
   try {
     await AddApiKey(data.name, data.issuer_id, data.key_id, data.private_key);
     message.success('添加成功');
-    await fetchKeys();
-    /* clear form */
     need_add.data.name = '';
     need_add.data.issuer_id = '';
     need_add.data.key_id = '';
@@ -86,7 +74,7 @@ const setActive = async (id) => {
   try {
     await SetCurrentKey(id);
     message.success('设置成功');
-    await fetchKeys();
+    table.loadData();
   } catch (err) {
     message.error('设置失败: ' + err);
   }
@@ -96,7 +84,7 @@ const deleteKey = async (id) => {
   try {
     await DeleteApiKey(id);
     message.success('删除成功');
-    await fetchKeys();
+    table.loadData();
   } catch (err) {
     message.error('删除失败: ' + err);
   }
@@ -118,9 +106,6 @@ const testAuth = async () => {
   }
 };
 
-onMounted(() => {
-  fetchKeys();
-});
 </script>
 
 <style scoped lang="scss">
