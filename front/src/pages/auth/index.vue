@@ -34,7 +34,6 @@
         :dataSource="need_add"
         :form="form_add"
         :showBorder="false"
-        :centered="true"
         :union="true"
         :init="addKey"
         :after="() => Object.keys(need_add.data).forEach(k => need_add.data[k] = '')"

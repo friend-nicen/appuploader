@@ -32,7 +32,6 @@
         :dataSource="need_add"
         :form="form_add"
         :showBorder="false"
-        :centered="true"
         :union="true"
         :submit="handleCreate"
         :hasTable="false"
