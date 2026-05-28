@@ -3,6 +3,8 @@
 一款基于 [Wails](https://wails.io) 和 [Vue 3](https://vuejs.org/) 开发的跨平台（macOS / Windows / Linux）App Store Connect 桌面可视化工具。
 它通过直接调用 App Store Connect API 的底层机制，实现了本地化、图形化的证书、设备、Bundle ID 和配置文件的管理，提供了现代化的 SaaS Dashboard 体验。
 
+<img src="./doc/screenshot.png">
+
 ## 特性
 - **现代 UI**: 基于 Vue 3 + TailwindCSS 实现的流畅响应式桌面端界面。
 - **本地存储**: 使用无 CGO 依赖的纯 Go SQLite 驱动 `github.com/glebarez/sqlite` 本地加密存储 API Keys 等配置信息。
