@@ -62,6 +62,14 @@ export function ExportP12(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExportP12'](arg1, arg2, arg3);
 }
 
+export function ExportP12WithOpenSSL(arg1) {
+  return window['go']['main']['App']['ExportP12WithOpenSSL'](arg1);
+}
+
+export function ExportPEM(arg1) {
+  return window['go']['main']['App']['ExportPEM'](arg1);
+}
+
 export function GetApiKeys() {
   return window['go']['main']['App']['GetApiKeys']();
 }
@@ -122,6 +130,14 @@ export function UpdateApiKey(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['UpdateApiKey'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function UpdateCertificatePassword(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCertificatePassword'](arg1, arg2);
+}
+
 export function UploadIPA(arg1) {
   return window['go']['main']['App']['UploadIPA'](arg1);
+}
+
+export function VerifyP12Password(arg1) {
+  return window['go']['main']['App']['VerifyP12Password'](arg1);
 }

@@ -34,7 +34,6 @@
         :showBorder="false"
         :union="true"
         :submit="handleCreate"
-        :hasTable="false"
         name="profile_add"
         title="添加 Profile">
     </v-form>

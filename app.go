@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/glebarez/sqlite"
@@ -551,12 +552,138 @@ func (a *App) ExportP12(certContent, keyPem, password string) (string, error) {
 		return "", fmt.Errorf("解析私钥失败: %w", err)
 	}
 	/* 将证书和私钥打包为 PKCS#12 格式 */
-	p12Data, err := pkcs12.Encode(rand.Reader, privKey, cert, nil, password)
+	p12Data, err := pkcs12.LegacyDES.Encode(privKey, cert, nil, password)
 	if err != nil {
 		return "", fmt.Errorf("生成 .p12 失败: %w", err)
 	}
 	/* 返回 base64 编码的 .p12 内容，前端直接下载 */
 	return base64.StdEncoding.EncodeToString(p12Data), nil
+}
+
+// UpdateCertificatePassword updates the stored password for a local certificate.
+func (a *App) UpdateCertificatePassword(appleCertID, newPassword string) (string, error) {
+	result := a.db.Model(&backend.LocalCertificate{}).
+		Where("apple_cert_id = ?", appleCertID).
+		Update("password", newPassword)
+	if result.Error != nil {
+		return "", fmt.Errorf("更新密码失败: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return "", fmt.Errorf("未找到本地证书记录")
+	}
+	return `{"code":1,"errMsg":"密码修改成功"}`, nil
+}
+
+// ExportP12WithOpenSSL exports a .p12 file using the system's OpenSSL command.
+// This provides better compatibility with tools like HBuilder.
+func (a *App) ExportP12WithOpenSSL(appleCertID string) (string, error) {
+	var local backend.LocalCertificate
+	if err := a.db.Where("apple_cert_id = ?", appleCertID).First(&local).Error; err != nil {
+		return "", fmt.Errorf("未找到本地证书记录: %w", err)
+	}
+	/* 创建临时目录存放证书和私钥 */
+	tmpDir, err := os.MkdirTemp("", "p12export-*")
+	if err != nil {
+		return "", fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	certFile := filepath.Join(tmpDir, "cert.pem")
+	keyFile := filepath.Join(tmpDir, "key.pem")
+	p12File := filepath.Join(tmpDir, "output.p12")
+
+	/* 写入证书文件（Apple 的 cert_pem 是 base64 DER，需要先转成 PEM） */
+	certDER, err := base64.StdEncoding.DecodeString(local.CertPem)
+	if err != nil {
+		return "", fmt.Errorf("解码证书失败: %w", err)
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	if err := os.WriteFile(certFile, certPEM, 0644); err != nil {
+		return "", fmt.Errorf("写入证书文件失败: %w", err)
+	}
+	/* 写入私钥文件 */
+	if err := os.WriteFile(keyFile, []byte(local.KeyPem), 0644); err != nil {
+		return "", fmt.Errorf("写入私钥文件失败: %w", err)
+	}
+	/* 调用 openssl 命令生成 .p12 */
+	cmd := exec.Command("openssl", "pkcs12", "-export",
+		"-in", certFile,
+		"-inkey", keyFile,
+		"-out", p12File,
+		"-passout", "pass:"+local.Password,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("openssl 执行失败: %w\n输出: %s", err, string(output))
+	}
+	/* 读取生成的 .p12 文件 */
+	p12Data, err := os.ReadFile(p12File)
+	if err != nil {
+		return "", fmt.Errorf("读取 .p12 文件失败: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(p12Data), nil
+}
+
+// ExportPEM exports the private key and certificate as PEM text content.
+// Returns a JSON with "keyPem" and "certPem" fields.
+func (a *App) ExportPEM(appleCertID string) (string, error) {
+	var local backend.LocalCertificate
+	if err := a.db.Where("apple_cert_id = ?", appleCertID).First(&local).Error; err != nil {
+		return "", fmt.Errorf("未找到本地证书记录: %w", err)
+	}
+	/* 将 Apple 的 base64 DER 证书转为 PEM */
+	certDER, err := base64.StdEncoding.DecodeString(local.CertPem)
+	if err != nil {
+		return "", fmt.Errorf("解码证书失败: %w", err)
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	result := map[string]string{
+		"keyPem":  local.KeyPem,
+		"certPem": string(certPEM),
+	}
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("JSON marshal 失败: %w", err)
+	}
+	return string(resultJSON), nil
+}
+
+// VerifyP12Password checks if the stored password can correctly encode and decode a .p12 file.
+// This is a debug function to verify the password pipeline.
+func (a *App) VerifyP12Password(appleCertID string) (string, error) {
+	var local backend.LocalCertificate
+	if err := a.db.Where("apple_cert_id = ?", appleCertID).First(&local).Error; err != nil {
+		return "", fmt.Errorf("未找到本地证书记录: %w", err)
+	}
+	/* 解析证书 */
+	certDER, err := base64.StdEncoding.DecodeString(local.CertPem)
+	if err != nil {
+		return "", fmt.Errorf("解码证书失败: %w", err)
+	}
+	cert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return "", fmt.Errorf("解析证书失败: %w", err)
+	}
+	/* 解析私钥 */
+	keyBlock, _ := pem.Decode([]byte(local.KeyPem))
+	if keyBlock == nil {
+		return "", fmt.Errorf("解析私钥 PEM 失败")
+	}
+	privKey, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("解析私钥失败: %w", err)
+	}
+	/* 用存储的密码编码 .p12 */
+	p12Data, err := pkcs12.LegacyDES.Encode(privKey, cert, nil, local.Password)
+	if err != nil {
+		return "", fmt.Errorf("编码 .p12 失败: %w", err)
+	}
+	/* 尝试用同样的密码解码，验证密码正确性 */
+	_, _, err = pkcs12.Decode(p12Data, local.Password)
+	if err != nil {
+		return fmt.Sprintf("密码校验失败，存储的密码为: [%s]，长度: %d，解码错误: %v", local.Password, len(local.Password), err), nil
+	}
+	return fmt.Sprintf("密码校验成功，存储的密码为: [%s]，长度: %d", local.Password, len(local.Password)), nil
 }
 
 // SaveTextFile shows a save file dialog and writes text content to the selected path.
@@ -694,7 +821,7 @@ func (a *App) ExportLocalP12(appleCertID string) (string, error) {
 		return "", fmt.Errorf("解析私钥失败: %w", err)
 	}
 	/* 使用存储的密码生成 .p12 */
-	p12Data, err := pkcs12.Encode(rand.Reader, privKey, cert, nil, local.Password)
+	p12Data, err := pkcs12.LegacyDES.Encode(privKey, cert, nil, local.Password)
 	if err != nil {
 		return "", fmt.Errorf("生成 .p12 失败: %w", err)
 	}

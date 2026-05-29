@@ -32,6 +32,10 @@ export function ExportLocalP12(arg1:string):Promise<string>;
 
 export function ExportP12(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function ExportP12WithOpenSSL(arg1:string):Promise<string>;
+
+export function ExportPEM(arg1:string):Promise<string>;
+
 export function GetApiKeys():Promise<Array<backend.ApiKey>>;
 
 export function ImportLocalData(arg1:string):Promise<void>;
@@ -62,4 +66,8 @@ export function TestAuth():Promise<boolean>;
 
 export function UpdateApiKey(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
+export function UpdateCertificatePassword(arg1:string,arg2:string):Promise<string>;
+
 export function UploadIPA(arg1:string):Promise<void>;
+
+export function VerifyP12Password(arg1:string):Promise<string>;
