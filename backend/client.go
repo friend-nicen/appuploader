@@ -198,3 +198,31 @@ func (c *AppStoreClient) Delete(endpoint string) error {
 
 	return nil
 }
+
+// PutUpload uploads raw file data to a presigned URL (used for IPA upload chunks).
+// The url is a presigned S3 URL; the headers map contains required upload headers.
+func (c *AppStoreClient) PutUpload(url string, data []byte, headers map[string]string) error {
+	req, err := http.NewRequest("PUT", url, bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("创建上传请求失败: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/octet-stream")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{Timeout: 300 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("上传分片失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("上传分片错误 (%d): %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}

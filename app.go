@@ -1,7 +1,9 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
+	"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -10,9 +12,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"howett.net/plist"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/glebarez/sqlite"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -428,9 +433,268 @@ func (a *App) SelectFile() (string, error) {
 	})
 }
 
-// UploadIPA is a placeholder for uploading IPA files
-func (a *App) UploadIPA(path string) error {
-	return fmt.Errorf("Not implemented")
+// extractIPAInfo reads an IPA file (ZIP) and extracts version, build number, and platform
+// from the embedded Info.plist. Supports both XML and binary plist formats.
+type ipaInfo struct {
+	VersionString string `json:"versionString"`
+	BuildNumber   string `json:"buildNumber"`
+	Platform      string `json:"platform"`
+	BundleID      string `json:"bundleId,omitempty"`
+}
+
+func extractIPAInfo(path string) *ipaInfo {
+	info := &ipaInfo{}
+
+	reader, err := zip.OpenReader(path)
+	if err != nil {
+		return info
+	}
+	defer reader.Close()
+
+	/* 在 Payload/*.app/Info.plist 中查找 */
+	var plistFile *zip.File
+	for _, f := range reader.File {
+		if strings.HasPrefix(f.Name, "Payload/") && strings.HasSuffix(f.Name, ".app/Info.plist") {
+			plistFile = f
+			break
+		}
+	}
+	if plistFile == nil {
+		return info
+	}
+
+	rc, err := plistFile.Open()
+	if err != nil {
+		return info
+	}
+	defer rc.Close()
+
+	content, err := io.ReadAll(rc)
+	if err != nil {
+		return info
+	}
+
+	/* 解析 plist（同时支持 XML 和二进制格式） */
+	var plistData map[string]interface{}
+	if _, err := plist.Unmarshal(content, &plistData); err != nil {
+		return info
+	}
+
+	if v, ok := plistData["CFBundleShortVersionString"].(string); ok {
+		info.VersionString = v
+	}
+
+	/* CFBundleVersion 可能是字符串也可能是数字 */
+	if v, ok := plistData["CFBundleVersion"].(string); ok {
+		info.BuildNumber = v
+	} else if v, ok := plistData["CFBundleVersion"].(uint64); ok {
+		info.BuildNumber = fmt.Sprintf("%d", v)
+	} else if v, ok := plistData["CFBundleVersion"].(int); ok {
+		info.BuildNumber = fmt.Sprintf("%d", v)
+	} else if v, ok := plistData["CFBundleVersion"].(float64); ok {
+		info.BuildNumber = fmt.Sprintf("%.0f", v)
+	}
+
+	/* 读取 Bundle ID */
+	if v, ok := plistData["CFBundleIdentifier"].(string); ok {
+		info.BundleID = v
+	}
+
+	platformRaw, _ := plistData["DTPlatformName"].(string)
+	switch platformRaw {
+	case "iphoneos":
+		info.Platform = "IOS"
+	case "macosx":
+		info.Platform = "MAC_OS"
+	case "appletvos":
+		info.Platform = "TV_OS"
+	case "xros":
+		info.Platform = "VISION_OS"
+	default:
+		info.Platform = "IOS"
+	}
+
+	return info
+}
+
+// GetIPAInfo extracts version, build number, and platform from an IPA file
+// and returns them as JSON for the frontend to display.
+func (a *App) GetIPAInfo(path string) (string, error) {
+	info := extractIPAInfo(path)
+	result, err := json.Marshal(info)
+	if err != nil {
+		return "", fmt.Errorf("序列化失败: %w", err)
+	}
+	return string(result), nil
+}
+
+// UploadIPA uploads an IPA file to App Store Connect for TestFlight distribution.
+func (a *App) UploadIPA(appID, path, versionString, buildNumber, platform string) error {
+	client, err := a.getActiveClient()
+	if err != nil {
+		return err
+	}
+
+	/* 获取文件信息 */
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("打开文件失败: %w", err)
+	}
+	defer file.Close()
+
+	fileStat, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("获取文件信息失败: %w", err)
+	}
+	fileSize := fileStat.Size()
+
+	/* 计算文件 MD5 */
+	md5Hash := md5.New()
+	if _, err := io.Copy(md5Hash, file); err != nil {
+		return fmt.Errorf("计算 MD5 失败: %w", err)
+	}
+	/* Step 1: 创建 build upload 预约 */
+	uploadBody := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "buildUploads",
+			"attributes": map[string]interface{}{
+				"cfBundleShortVersionString": versionString,
+				"cfBundleVersion":             buildNumber,
+				"platform":                   platform,
+			},
+			"relationships": map[string]interface{}{
+				"app": map[string]interface{}{
+					"data": map[string]string{
+						"id":   appID,
+						"type": "apps",
+					},
+				},
+			},
+		},
+	}
+	payload, _ := json.Marshal(uploadBody)
+	res, err := client.Post("/v1/buildUploads", payload)
+	if err != nil {
+		return fmt.Errorf("创建上传任务失败: %w", err)
+	}
+
+	/* 解析 buildUpload 响应，获取 buildUpload ID */
+	var buildUploadResp struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(res, &buildUploadResp); err != nil {
+		return fmt.Errorf("解析 buildUpload 响应失败: %w", err)
+	}
+	buildUploadID := buildUploadResp.Data.ID
+	if buildUploadID == "" {
+		return fmt.Errorf("创建上传任务失败: 未获取到 upload ID")
+	}
+
+	/* 提取文件名 */
+	fileName := filepath.Base(path)
+
+	/* Step 2: 创建 buildUploadFile，获取上传地址 */
+	fileBody := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "buildUploadFiles",
+			"attributes": map[string]interface{}{
+				"fileName":  fileName,
+				"fileSize":  fileSize,
+				"assetType": "ASSET",
+				"uti":       "com.apple.ipa",
+			},
+			"relationships": map[string]interface{}{
+				"buildUpload": map[string]interface{}{
+					"data": map[string]string{
+						"id":   buildUploadID,
+						"type": "buildUploads",
+					},
+				},
+			},
+		},
+	}
+	filePayload, _ := json.Marshal(fileBody)
+	res, err = client.Post("/v1/buildUploadFiles", filePayload)
+	if err != nil {
+		return fmt.Errorf("创建文件上传任务失败: %w", err)
+	}
+
+	/* 解析 buildUploadFile 响应 */
+	var fileResp struct {
+		Data struct {
+			ID         string `json:"id"`
+			Attributes struct {
+				UploadOperations []struct {
+					RequestURL    string `json:"url"`
+					RequestMethod string `json:"method"`
+					RequestHeaders []struct {
+						Name  string `json:"name"`
+						Value string `json:"value"`
+					} `json:"requestHeaders"`
+					MD5    string `json:"md5"`
+					Offset int64  `json:"offset"`
+					Length int64  `json:"length"`
+				} `json:"uploadOperations"`
+			} `json:"attributes"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(res, &fileResp); err != nil {
+		return fmt.Errorf("解析文件上传响应失败: %w", err)
+	}
+
+	uploadFileID := fileResp.Data.ID
+	operations := fileResp.Data.Attributes.UploadOperations
+	if len(operations) == 0 {
+		return fmt.Errorf("未获取到上传地址")
+	}
+
+	/* Step 3: 逐个上传分片到预签名 URL */
+	file.Seek(0, 0)
+
+	for i, op := range operations {
+		chunk := make([]byte, op.Length)
+		n, err := file.ReadAt(chunk, op.Offset)
+		if err != nil && err != io.EOF {
+			return fmt.Errorf("读取文件分片 %d 失败: %w", i, err)
+		}
+		chunk = chunk[:n]
+
+		/* 构建请求头 */
+		headers := make(map[string]string)
+		for _, h := range op.RequestHeaders {
+			headers[h.Name] = h.Value
+		}
+		if op.MD5 != "" {
+			if _, exists := headers["Content-MD5"]; !exists {
+				headers["Content-MD5"] = op.MD5
+			}
+		}
+
+		if err := client.PutUpload(op.RequestURL, chunk, headers); err != nil {
+			return fmt.Errorf("上传分片 %d 失败: %w", i, err)
+		}
+	}
+
+	/* Step 4: 标记 build upload file 为已上传 */
+	if uploadFileID != "" {
+		patchBody := map[string]interface{}{
+			"data": map[string]interface{}{
+				"type": "buildUploadFiles",
+				"id":   uploadFileID,
+				"attributes": map[string]interface{}{
+					"uploaded": true,
+				},
+			},
+		}
+		patchPayload, _ := json.Marshal(patchBody)
+		if _, err := client.Patch("/v1/buildUploadFiles/"+uploadFileID, patchPayload); err != nil {
+			return fmt.Errorf("标记上传完成失败: %w", err)
+		}
+	}
+
+	return nil
 }
 
 /* 生成 RSA 2048 密钥对和 PEM 格式的 CSR（Apple 要求使用 RSA 2048） */

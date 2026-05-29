@@ -7,6 +7,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/wailsapp/wails/v2 v2.12.0
 	gorm.io/gorm v1.25.7
+	howett.net/plist v1.0.2-0.20250314012144-ee69052608d9
 	software.sslmate.com/src/go-pkcs12 v0.7.1
 )
 
@@ -50,5 +51,3 @@ require (
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
 )
-
-// replace github.com/wailsapp/wails/v2 v2.12.0 => /root/go/pkg/mod

@@ -38,6 +38,8 @@ export function ExportPEM(arg1:string):Promise<string>;
 
 export function GetApiKeys():Promise<Array<backend.ApiKey>>;
 
+export function GetIPAInfo(arg1:string):Promise<string>;
+
 export function ImportLocalData(arg1:string):Promise<void>;
 
 export function ListApps():Promise<string>;
@@ -68,6 +70,6 @@ export function UpdateApiKey(arg1:number,arg2:string,arg3:string,arg4:string,arg
 
 export function UpdateCertificatePassword(arg1:string,arg2:string):Promise<string>;
 
-export function UploadIPA(arg1:string):Promise<void>;
+export function UploadIPA(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
 export function VerifyP12Password(arg1:string):Promise<string>;

@@ -74,6 +74,10 @@ export function GetApiKeys() {
   return window['go']['main']['App']['GetApiKeys']();
 }
 
+export function GetIPAInfo(arg1) {
+  return window['go']['main']['App']['GetIPAInfo'](arg1);
+}
+
 export function ImportLocalData(arg1) {
   return window['go']['main']['App']['ImportLocalData'](arg1);
 }
@@ -134,8 +138,8 @@ export function UpdateCertificatePassword(arg1, arg2) {
   return window['go']['main']['App']['UpdateCertificatePassword'](arg1, arg2);
 }
 
-export function UploadIPA(arg1) {
-  return window['go']['main']['App']['UploadIPA'](arg1);
+export function UploadIPA(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['UploadIPA'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function VerifyP12Password(arg1) {
