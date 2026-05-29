@@ -98,6 +98,14 @@ export function RevokeCertificate(arg1) {
   return window['go']['main']['App']['RevokeCertificate'](arg1);
 }
 
+export function SaveBase64File(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveBase64File'](arg1, arg2, arg3);
+}
+
+export function SaveTextFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveTextFile'](arg1, arg2, arg3);
+}
+
 export function SelectFile() {
   return window['go']['main']['App']['SelectFile']();
 }

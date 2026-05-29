@@ -51,7 +51,9 @@ import {
   ExportCSR,
   ExportLocalP12,
   ListCertificatesWithLocal,
-  RevokeCertificate
+  RevokeCertificate,
+  SaveTextFile,
+  SaveBase64File
 } from '#/go/main/App';
 import initTable from './table';
 import initForm from './form';
@@ -61,41 +63,6 @@ const {table, columns} = initTable();
 const {form_add, need_add} = initForm();
 
 const visible_add = ref(false);
-
-/* 下载 Blob 文件辅助函数 */
-const downloadBlob = (content, filename, mimeType) => {
-  try {
-    const binary = atob(content);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    load.error('下载失败: ' + e);
-  }
-};
-
-/* 下载文本文件辅助函数 */
-const downloadText = (content, filename) => {
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
 
 /* 提交创建证书 */
 const handleCreate = async (data) => {
@@ -115,9 +82,10 @@ const handleExportCSR = async (record) => {
   try {
     const csr = await ExportCSR(record.id);
     const name = record.attributes?.name || 'certificate';
-    downloadText(csr, name + '_' + record.id + '.csr');
+    await SaveTextFile(csr, name + '_' + record.id + '.csr', '*.csr');
     load.success('CSR 导出成功');
   } catch (err) {
+    if (err.message && err.message.includes('取消了')) return;
     load.error('CSR 导出失败: ' + err);
   }
 };
@@ -128,9 +96,10 @@ const handleExportP12 = async (record) => {
     const res = await ExportLocalP12(record.id);
     const name = record.attributes?.name || 'certificate';
     const type = record.attributes?.certificateType || 'CERTIFICATE';
-    downloadBlob(res, name + '_' + type + '.p12', 'application/x-pkcs12');
+    await SaveBase64File(res, name + '_' + type + '.p12', '*.p12');
     load.success('.p12 导出成功');
   } catch (err) {
+    if (err.message && err.message.includes('取消了')) return;
     load.error('.p12 导出失败: ' + err);
   }
 };

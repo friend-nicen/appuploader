@@ -51,7 +51,8 @@ import {
   ListBundleIds,
   ListCertificatesWithLocal,
   ListDevices,
-  ListProfiles
+  ListProfiles,
+  SaveBase64File
 } from '#/go/main/App';
 import initTable from './table';
 import initForm, {BUNDLE_ID_INDEX, CERT_INDEX, DEVICE_INDEX} from './form';
@@ -61,28 +62,6 @@ const {table, columns} = initTable();
 const {form_add, need_add} = initForm();
 
 const visible_add = ref(false);
-
-/* 下载 Blob 文件辅助函数 */
-const downloadBlob = (content, filename, mimeType) => {
-  try {
-    const binary = atob(content);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    load.error('下载失败: ' + e);
-  }
-};
 
 /* 加载表单选项数据 */
 const loadFormOptions = async () => {
@@ -162,9 +141,10 @@ const handleDownload = async (record) => {
       return;
     }
     const name = record.attributes?.name || 'profile';
-    downloadBlob(content, name + '_' + record.id + '.mobileprovision', 'application/x-apple-aspen-config');
+    await SaveBase64File(content, name + '_' + record.id + '.mobileprovision', '*.mobileprovision');
     load.success('描述文件下载成功');
   } catch (err) {
+    if (err.message && err.message.includes('取消了')) return;
     load.error('下载失败: ' + err);
   }
 };

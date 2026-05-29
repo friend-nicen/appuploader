@@ -50,6 +50,10 @@ export function ListProfiles():Promise<string>;
 
 export function RevokeCertificate(arg1:string):Promise<void>;
 
+export function SaveBase64File(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function SaveTextFile(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function SelectFile():Promise<string>;
 
 export function SetCurrentKey(arg1:number):Promise<void>;

@@ -559,6 +559,58 @@ func (a *App) ExportP12(certContent, keyPem, password string) (string, error) {
 	return base64.StdEncoding.EncodeToString(p12Data), nil
 }
 
+// SaveTextFile shows a save file dialog and writes text content to the selected path.
+func (a *App) SaveTextFile(content, defaultName, filterPattern string) (string, error) {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:          "保存文件",
+		DefaultFilename: defaultName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: defaultName,
+				Pattern:     filterPattern,
+			},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", fmt.Errorf("用户取消了保存")
+	}
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return "", fmt.Errorf("写入文件失败: %w", err)
+	}
+	return path, nil
+}
+
+// SaveBase64File shows a save file dialog, decodes base64 content, and writes to the selected path.
+func (a *App) SaveBase64File(content, defaultName, filterPattern string) (string, error) {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:          "保存文件",
+		DefaultFilename: defaultName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: defaultName,
+				Pattern:     filterPattern,
+			},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", fmt.Errorf("用户取消了保存")
+	}
+	data, err := base64.StdEncoding.DecodeString(content)
+	if err != nil {
+		return "", fmt.Errorf("解码文件内容失败: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return "", fmt.Errorf("写入文件失败: %w", err)
+	}
+	return path, nil
+}
+
 /* 导出数据结构 */
 type exportData struct {
 	ApiKeys      []backend.ApiKey            `json:"apiKeys"`
